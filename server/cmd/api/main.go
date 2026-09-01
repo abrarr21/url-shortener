@@ -1,62 +1,51 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
+	"github.com/abrarr21/url-shortener/internal/handler"
+	"github.com/abrarr21/url-shortener/internal/logger"
+	"github.com/abrarr21/url-shortener/internal/routes"
 )
 
 func main() {
 	cfg := config.Load()
 
+	// ---------- Logger ------------
+	logger := logger.New(cfg.Server.Env)
+	slog.SetDefault(logger)
+
 	// ---------- Postgres + Redis Connection -----------
-	pool, err := database.ConnectDB(cfg.Database.DbUrl)
+	logger.Info("connecting to database and redis")
+	db, err := database.NewDatabase(cfg.Database.DbUrl, cfg.Redis.RedisUrl)
 	if err != nil {
-		log.Fatalf("main.db.connect: %v", err)
+		logger.Error("failed to initialize database", "error", err)
+		os.Exit(1)
 	}
-	defer pool.Close()
+	defer db.Close()
+	logger.Info("postgres and redis connected")
 
-	redisClient, err := database.ConnectRedis(cfg.Redis.RedisUrl)
-	if err != nil {
-		log.Fatalf("main.redis.connect: %v", err)
-	}
-	defer redisClient.Close()
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		if err := pool.Ping(ctx); err != nil {
-			http.Error(w, `{"postgres": "NOT OK", redis: "OK"}`, http.StatusServiceUnavailable)
-			return
-		}
-
-		if err := redisClient.Ping(ctx).Err(); err != nil {
-			http.Error(w, `{"postgres":"OK","redis":"NOT OK"}`, http.StatusServiceUnavailable)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"postgres":"OK","redis":"OK"}`))
-	})
+	// Dependency injection
+	h := handler.NewHandler(db, cfg)
+	router := routes.RegisterAllRoutes(h, logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
-		Handler:      mux,
+		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  1 * time.Minute,
 	}
 
-	log.Println("Connected to Database and Redis")
-	log.Println("server running on port: ", cfg.Server.Port)
+	logger.Info("server starting", "port", cfg.Server.Port)
 
-	if err := srv.ListenAndServe(); err != nil {
-		srv.ErrorLog.Fatal("server failed")
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Error("server stopped", "error", err)
+		os.Exit(1)
 	}
 }

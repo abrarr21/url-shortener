@@ -1,0 +1,55 @@
+version: '3'
+
+tasks:
+  server:run:
+    desc: Run the API server
+    dir: server
+    cmds:
+      - go run ./cmd/api
+
+  server:build:
+    desc: Build the API server
+    dir: server
+    cmds:
+      - go build -o bin/api ./cmd/api
+
+  server:tidy:
+    desc: Tidy Go dependencies
+    dir: server
+    cmds:
+      - go mod tidy
+
+
+  # -------------------------
+  # Database Migrations
+  # -------------------------
+  migrate:up:
+    desc: Run all pending migrations
+    dir: server
+    cmds:
+      - go run ./cmd/migrate up
+
+  migrate:down:
+    desc: Roll back the latest migration
+    dir: server
+    cmds:
+      - go run ./cmd/migrate down
+
+
+  # -------------------------
+  # Docker
+  # -------------------------
+  docker:up:
+   desc: Start Docker services
+   cmds:
+    - docker compose up -d
+
+  docker:down:
+   desc: Stop Docker services
+   cmds:
+    - docker compose down
+
+  docker:logs:
+   desc: Show Docker service logs
+   cmds:
+    - docker compose logs -f
