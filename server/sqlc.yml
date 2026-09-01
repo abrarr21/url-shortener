@@ -1,0 +1,14 @@
+version: '2'
+sql:
+  - engine: "postgresql"
+    queries: "queries"
+    schema:
+      - "migrations/0001_create_users_table.up.sql"
+      - "migrations/0002_create_urls_table.up.sql"
+    gen:
+      go:
+        package: "generated"
+        out: "internal/database/generated"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_interface: true

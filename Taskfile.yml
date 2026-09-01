@@ -35,6 +35,11 @@ tasks:
     cmds:
       - go run ./cmd/migrate down
 
+  sqlc:generate:
+    desc: Generate Go code from SQL queries/schema
+    dir: server
+    cmds:
+      - sqlc generate
 
   # -------------------------
   # Docker
