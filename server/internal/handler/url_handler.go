@@ -25,18 +25,18 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	var req shortenRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "invalid request body")
+		utils.Error(w, http.StatusBadRequest, "invalid request body", utils.CodeBadRequest, nil)
 		return
 	}
 
 	if err := validateURL(req.LongURL); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		utils.Error(w, http.StatusBadRequest, err.Error(), utils.CodeInvalidInput, nil)
 		return
 	}
 
 	shortcode, err := h.Service.Shorten(r.Context(), req.LongURL)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "failed to shorten url")
+		utils.Error(w, http.StatusInternalServerError, "failed to shorten url", utils.CodeInternal, nil)
 		return
 	}
 
@@ -53,10 +53,10 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	longURL, err := h.Service.Lookup(r.Context(), shortcode)
 	if err != nil {
 		if errors.Is(err, shortener.ErrNotFound) {
-			utils.WriteError(w, http.StatusNotFound, "short url not found")
+			utils.Error(w, http.StatusNotFound, "short url not found", utils.CodeNotFound, nil)
 			return
 		}
-		utils.WriteError(w, http.StatusInternalServerError, "internal server error")
+		utils.Error(w, http.StatusInternalServerError, "internal server error", utils.CodeInternal, nil)
 		return
 	}
 

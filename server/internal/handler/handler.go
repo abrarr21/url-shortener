@@ -6,6 +6,7 @@ import (
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
 	"github.com/abrarr21/url-shortener/internal/shortener"
+	"github.com/abrarr21/url-shortener/internal/utils"
 )
 
 type Handler struct {
@@ -26,16 +27,24 @@ func (h *Handler) CheckHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if err := h.DB.Postgres.Ping(ctx); err != nil {
-		http.Error(w, `{"postgres": "NOT OK", redis: "OK"}`, http.StatusServiceUnavailable)
+		utils.Error(w, http.StatusServiceUnavailable, "database service unavailable", utils.CodeUnavailable, map[string]string{
+			"postgres": "not_ok",
+			"redis":    "ok",
+		})
 		return
 	}
 
 	if err := h.DB.Redis.Ping(ctx).Err(); err != nil {
-		http.Error(w, `{"postgres":"OK","redis":"NOT OK"}`, http.StatusServiceUnavailable)
+		utils.Error(w, http.StatusServiceUnavailable, "Cache service unavailable", utils.CodeUnavailable, map[string]string{
+			"postgres": "ok",
+			"redis":    "not_ok",
+		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"postgres":"OK","redis":"OK"}`))
+	// w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(http.StatusOK)
+	// w.Write([]byte(`{"postgres":"OK","redis":"OK"}`))
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"postgres": "OK", "redis": "OK"})
 }
