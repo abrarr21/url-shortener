@@ -5,17 +5,20 @@ import (
 
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
+	"github.com/abrarr21/url-shortener/internal/shortener"
 )
 
 type Handler struct {
-	DB  *database.Database
-	Cfg *config.Config
+	DB      *database.Database
+	Cfg     *config.Config
+	Service *shortener.Service
 }
 
-func NewHandler(db *database.Database, cfg *config.Config) *Handler {
+func NewHandler(db *database.Database, cfg *config.Config, svc *shortener.Service) *Handler {
 	return &Handler{
-		DB:  db,
-		Cfg: cfg,
+		DB:      db,
+		Cfg:     cfg,
+		Service: svc,
 	}
 }
 

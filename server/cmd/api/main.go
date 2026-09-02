@@ -8,9 +8,11 @@ import (
 
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
+	"github.com/abrarr21/url-shortener/internal/database/generated"
 	"github.com/abrarr21/url-shortener/internal/handler"
 	"github.com/abrarr21/url-shortener/internal/logger"
 	"github.com/abrarr21/url-shortener/internal/routes"
+	"github.com/abrarr21/url-shortener/internal/shortener"
 )
 
 func main() {
@@ -30,8 +32,17 @@ func main() {
 	defer db.Close()
 	logger.Info("postgres and redis connected")
 
+	queries := generated.New(db.Postgres)
+
 	// Dependency injection
-	h := handler.NewHandler(db, cfg)
+	snowflake, err := shortener.NewSnowflakeGenerator(cfg.NodeID.NodeID)
+	if err != nil {
+		logger.Error("failed to initialize snowflake generator", "error", err)
+		os.Exit(1)
+	}
+
+	svc := shortener.NewService(snowflake, queries)
+	h := handler.NewHandler(db, cfg, svc)
 	router := routes.RegisterAllRoutes(h, logger)
 
 	srv := &http.Server{

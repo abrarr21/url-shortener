@@ -18,5 +18,7 @@ func RegisterAllRoutes(h *handler.Handler, logger *slog.Logger) *chi.Mux {
 
 	r.Get("/health", h.CheckHealth)
 
+	URLRoutes(r, h)
+
 	return r
 }
