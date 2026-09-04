@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
 	"github.com/abrarr21/url-shortener/internal/database/generated"
@@ -22,17 +23,29 @@ func main() {
 	logger := logger.New(cfg.Server.Env)
 	slog.SetDefault(logger)
 
-	// ---------- Postgres + Redis Connection -----------
-	logger.Info("connecting to database and redis")
-	db, err := database.NewDatabase(cfg.Database.DbUrl, cfg.Redis.RedisUrl)
+	// --------- DB connection ---------
+	logger.Info("connecting to database")
+	db, err := database.NewDatabase(cfg.Database.DbUrl)
 	if err != nil {
 		logger.Error("failed to initialize database", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
-	logger.Info("postgres and redis connected")
+	logger.Info("postgres connected")
+
+	// --------- Redis connection ---------
+	logger.Info("connecting to redis")
+	cacheConn, err := cache.ConnectRedis(cfg.Redis.RedisUrl)
+	if err != nil {
+		logger.Error("failed to initialize redi", "error", err)
+		os.Exit(1)
+	}
+	defer cacheConn.Close()
+	logger.Info("redis connected")
 
 	queries := generated.New(db.Postgres)
+
+	urlCache := cache.NewURLCache(cacheConn, 2*time.Minute)
 
 	// Dependency injection
 	snowflake, err := shortener.NewSnowflakeGenerator(cfg.NodeID.NodeID)
@@ -41,8 +54,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	svc := shortener.NewService(snowflake, queries)
-	h := handler.NewHandler(db, cfg, svc)
+	svc := shortener.NewService(snowflake, queries, urlCache, logger)
+	h := handler.NewHandler(db, cacheConn, cfg, svc)
 	router := routes.RegisterAllRoutes(h, logger)
 
 	srv := &http.Server{

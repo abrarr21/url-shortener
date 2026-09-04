@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
 	"github.com/abrarr21/url-shortener/internal/shortener"
@@ -11,13 +12,15 @@ import (
 
 type Handler struct {
 	DB      *database.Database
+	Cache   *cache.Cache
 	Cfg     *config.Config
 	Service *shortener.Service
 }
 
-func NewHandler(db *database.Database, cfg *config.Config, svc *shortener.Service) *Handler {
+func NewHandler(db *database.Database, c *cache.Cache, cfg *config.Config, svc *shortener.Service) *Handler {
 	return &Handler{
 		DB:      db,
+		Cache:   c,
 		Cfg:     cfg,
 		Service: svc,
 	}
@@ -34,7 +37,7 @@ func (h *Handler) CheckHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.Redis.Ping(ctx).Err(); err != nil {
+	if err := h.Cache.Ping(ctx); err != nil {
 		utils.Error(w, http.StatusServiceUnavailable, "Cache service unavailable", utils.CodeUnavailable, map[string]string{
 			"postgres": "ok",
 			"redis":    "not_ok",
