@@ -64,13 +64,21 @@ func (q *Queries) GetUrlByShortCode(ctx context.Context, shortCode string) (Url,
 	return i, err
 }
 
-const incrementClickCount = `-- name: IncrementClickCount :exec
+const incrementClickCount = `-- name: IncrementClickCount :one
 UPDATE urls
 SET click_count = click_count + 1
-WHERE short_code = $1
+WHERE short_code = $1 
+RETURNING click_count, created_at
 `
 
-func (q *Queries) IncrementClickCount(ctx context.Context, shortCode string) error {
-	_, err := q.db.Exec(ctx, incrementClickCount, shortCode)
-	return err
+type IncrementClickCountRow struct {
+	ClickCount int64              `json:"click_count"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) IncrementClickCount(ctx context.Context, shortCode string) (IncrementClickCountRow, error) {
+	row := q.db.QueryRow(ctx, incrementClickCount, shortCode)
+	var i IncrementClickCountRow
+	err := row.Scan(&i.ClickCount, &i.CreatedAt)
+	return i, err
 }

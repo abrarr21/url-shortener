@@ -7,7 +7,8 @@ RETURNING *;
 SELECT * FROM urls
 WHERE short_code = $1;
 
--- name: IncrementClickCount :exec
+-- name: IncrementClickCount :one
 UPDATE urls
 SET click_count = click_count + 1
-WHERE short_code = $1;
+WHERE short_code = $1 
+RETURNING click_count, created_at;

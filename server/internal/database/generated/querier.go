@@ -16,7 +16,8 @@ type Querier interface {
 	GetURLsByUserID(ctx context.Context, userID pgtype.Int8) ([]Url, error)
 	GetUrlByShortCode(ctx context.Context, shortCode string) (Url, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
-	IncrementClickCount(ctx context.Context, shortCode string) error
+	IncrementClickCount(ctx context.Context, shortCode string) (IncrementClickCountRow, error)
+	MarkEventProcessed(ctx context.Context, eventID string) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

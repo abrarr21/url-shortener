@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ProcessedEvent struct {
+	EventID     string             `json:"event_id"`
+	ProcessedAt pgtype.Timestamptz `json:"processed_at"`
+}
+
 type Url struct {
 	ID         int64              `json:"id"`
 	ShortCode  string             `json:"short_code"`
