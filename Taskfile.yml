@@ -7,6 +7,12 @@ tasks:
     cmds:
       - go run ./cmd/api
 
+  worker:run:
+    desc: Run the background worker
+    dir: server
+    cmds:
+      - go run ./cmd/worker
+
   server:build:
     desc: Build the API server
     dir: server

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/abrarr21/url-shortener/internal/analytics"
 	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
@@ -11,18 +12,20 @@ import (
 )
 
 type Handler struct {
-	DB      *database.Database
-	Cache   *cache.Cache
-	Cfg     *config.Config
-	Service *shortener.Service
+	DB        *database.Database
+	Cache     *cache.Cache
+	Cfg       *config.Config
+	Service   *shortener.Service
+	Analytics *analytics.Producer
 }
 
-func NewHandler(db *database.Database, c *cache.Cache, cfg *config.Config, svc *shortener.Service) *Handler {
+func NewHandler(db *database.Database, c *cache.Cache, cfg *config.Config, svc *shortener.Service, analytics *analytics.Producer) *Handler {
 	return &Handler{
-		DB:      db,
-		Cache:   c,
-		Cfg:     cfg,
-		Service: svc,
+		DB:        db,
+		Cache:     c,
+		Cfg:       cfg,
+		Service:   svc,
+		Analytics: analytics,
 	}
 }
 

@@ -60,6 +60,7 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go h.Analytics.PublishClick(shortcode, r.RemoteAddr)
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
 

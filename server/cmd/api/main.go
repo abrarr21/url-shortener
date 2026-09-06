@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/abrarr21/url-shortener/internal/analytics"
 	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
@@ -54,8 +55,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	analyticsProducer := analytics.NewProducer(cacheConn.Client, logger)
 	svc := shortener.NewService(snowflake, queries, urlCache, logger)
-	h := handler.NewHandler(db, cacheConn, cfg, svc)
+	h := handler.NewHandler(db, cacheConn, cfg, svc, analyticsProducer)
 	router := routes.RegisterAllRoutes(h, logger)
 
 	srv := &http.Server{
