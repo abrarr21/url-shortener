@@ -34,7 +34,9 @@ func main() {
 	}
 	defer cacheConn.Close()
 
-	worker := analytics.NewWorker(cacheConn.Client, db.Postgres, "worker-1", logger)
+	workerName := cfg.NodeID.WorkerID
+
+	worker := analytics.NewWorker(cacheConn.Client, db.Postgres, workerName, logger)
 	if err := worker.Run(context.Background()); err != nil {
 		logger.Error("worker stopped", "error", err)
 		os.Exit(1)

@@ -38,6 +38,8 @@ func (w *Worker) Run(ctx context.Context) error {
 	}
 	w.logger.Info("analytics worker started", "worker", w.workerName, "stream", ClicksStream)
 
+	go w.runClaimSweep(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -118,4 +120,43 @@ func (w *Worker) processEvent(ctx context.Context, msg redis.XMessage) error {
 
 	w.logger.Info("click processed", "event_id", msg.ID, "short_code", shortCode, "click_count", result.ClickCount, "score", score)
 	return nil
+}
+
+// runClaimSweep periodically reclaims messages that are delivered to some consumer but never acknowledged = most commonly because that consumer crashed
+func (w *Worker) runClaimSweep(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			w.claimAbandoned(ctx)
+		}
+	}
+}
+
+func (w *Worker) claimAbandoned(ctx context.Context) {
+	messages, _, err := w.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		Stream:   ClicksStream,
+		Group:    ConsumerGroup,
+		Consumer: w.workerName,
+		MinIdle:  30 * time.Second,
+		Start:    "0",
+		Count:    50,
+	}).Result()
+	if err != nil {
+		w.logger.Error("XAutoClaim failed", "error", err)
+		return
+	}
+
+	for _, msg := range messages {
+		w.logger.Warn("reclaimed abandoned event", "event_id", msg.ID, "worker", w.workerName)
+		if err := w.processEvent(ctx, msg); err != nil {
+			w.logger.Warn("reclaimed event processing failed, will retry", "event_id", msg.ID, "error", err)
+			continue
+		}
+		w.rdb.XAck(ctx, ClicksStream, ConsumerGroup, msg.ID)
+	}
 }

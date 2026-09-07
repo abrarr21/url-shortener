@@ -22,7 +22,8 @@ type RedisConfig struct {
 }
 
 type NodeIDConfig struct {
-	NodeID int64
+	NodeID   int64
+	WorkerID string
 }
 
 type Config struct {
@@ -51,6 +52,11 @@ func Load() *Config {
 		log.Fatalf("NODE_ID must be a valid integer, got %s", nodeIDStr)
 	}
 
+	workerID := getEnv("WORKER_ID", "worker-1")
+	if workerID == "" {
+		log.Println("WORKER_ID is missing, add to start the worker")
+	}
+
 	return &Config{
 		ServerConfig{
 			Port: getEnv("PORT", "8080"),
@@ -66,7 +72,8 @@ func Load() *Config {
 		},
 
 		NodeIDConfig{
-			NodeID: nodeID,
+			NodeID:   nodeID,
+			WorkerID: workerID,
 		},
 	}
 }

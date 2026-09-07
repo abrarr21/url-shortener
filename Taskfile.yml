@@ -10,8 +10,10 @@ tasks:
   worker:run:
     desc: Run the background worker
     dir: server
+    vars:
+      WORKER_ID: '{{.WORKER_ID | default "worker1"}}'
     cmds:
-      - go run ./cmd/worker
+      - WORKER_ID={{.WORKER_ID}} go run cmd/worker/main.go
 
   server:build:
     desc: Build the API server
