@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/abrarr21/url-shortener/internal/analytics"
 	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/config"
 	"github.com/abrarr21/url-shortener/internal/database"
+	"github.com/abrarr21/url-shortener/internal/hub"
 	"github.com/abrarr21/url-shortener/internal/shortener"
 	"github.com/abrarr21/url-shortener/internal/utils"
 )
@@ -17,15 +19,19 @@ type Handler struct {
 	Cfg       *config.Config
 	Service   *shortener.Service
 	Analytics *analytics.Producer
+	Hub       *hub.Hub
+	logger    *slog.Logger
 }
 
-func NewHandler(db *database.Database, c *cache.Cache, cfg *config.Config, svc *shortener.Service, analytics *analytics.Producer) *Handler {
+func NewHandler(db *database.Database, c *cache.Cache, cfg *config.Config, svc *shortener.Service, analytics *analytics.Producer, logger *slog.Logger, hub *hub.Hub) *Handler {
 	return &Handler{
 		DB:        db,
 		Cache:     c,
 		Cfg:       cfg,
 		Service:   svc,
 		Analytics: analytics,
+		Hub:       hub,
+		logger:    logger,
 	}
 }
 

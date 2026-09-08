@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/abrarr21/url-shortener/internal/database"
 	"github.com/abrarr21/url-shortener/internal/database/generated"
 	"github.com/abrarr21/url-shortener/internal/handler"
+	"github.com/abrarr21/url-shortener/internal/hub"
 	"github.com/abrarr21/url-shortener/internal/logger"
 	"github.com/abrarr21/url-shortener/internal/routes"
 	"github.com/abrarr21/url-shortener/internal/shortener"
@@ -55,9 +57,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	dashboardHub := hub.NewHub(logger)
+	go dashboardHub.Run(context.Background())
+	go hub.RunBridge(context.Background(), cacheConn.Client, dashboardHub, logger)
+
 	analyticsProducer := analytics.NewProducer(cacheConn.Client, logger)
 	svc := shortener.NewService(snowflake, queries, urlCache, logger)
-	h := handler.NewHandler(db, cacheConn, cfg, svc, analyticsProducer)
+	h := handler.NewHandler(db, cacheConn, cfg, svc, analyticsProducer, logger, dashboardHub)
 	router := routes.RegisterAllRoutes(h, logger)
 
 	srv := &http.Server{

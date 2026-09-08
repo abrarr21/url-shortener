@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/abrarr21/url-shortener/internal/database/generated"
+	"github.com/abrarr21/url-shortener/internal/hub"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -116,6 +118,16 @@ func (w *Worker) processEvent(ctx context.Context, msg redis.XMessage) error {
 		Member: shortCode,
 	}).Err(); err != nil {
 		w.logger.Error("trending score update failed, count is still correct", "short_code", shortCode, "error", err)
+	}
+
+	update, _ := json.Marshal(map[string]any{
+		"short_code":  shortCode,
+		"click_count": result.ClickCount,
+		"score":       score,
+	})
+
+	if err := w.rdb.Publish(ctx, hub.DashboardChannel, update).Err(); err != nil {
+		w.logger.Error("dashboard publish failed", "error", err)
 	}
 
 	w.logger.Info("click processed", "event_id", msg.ID, "short_code", shortCode, "click_count", result.ClickCount, "score", score)

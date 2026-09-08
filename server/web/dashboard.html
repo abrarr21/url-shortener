@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Live Dashboard</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+      }
+      #status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: inline-block;
+      }
+      .connected {
+        background: #d4f4dd;
+        color: #1a7f37;
+      }
+      .disconnected {
+        background: #fde2e2;
+        color: #c92a2a;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+      }
+      #log {
+        font-size: 12px;
+        color: #888;
+        margin-top: 24px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>
+      Live Click Dashboard
+      <span id="status" class="disconnected">connecting…</span>
+    </h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Short Code</th>
+          <th>Clicks</th>
+          <th>Trending Score</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div id="log"></div>
+
+    <script>
+      const rows = {};
+      const rowsEl = document.getElementById("rows");
+      const statusEl = document.getElementById("status");
+      const logEl = document.getElementById("log");
+
+      function render() {
+        const sorted = Object.values(rows).sort((a, b) => b.score - a.score);
+        rowsEl.innerHTML = sorted
+          .map(
+            (r) =>
+              `<tr><td>${r.short_code}</td><td>${r.click_count}</td><td>${r.score.toFixed(4)}</td></tr>`,
+          )
+          .join("");
+      }
+
+      function connect() {
+        const ws = new WebSocket(`ws://${location.host}/ws/dashboard`);
+
+        ws.onopen = () => {
+          statusEl.textContent = "live";
+          statusEl.className = "connected";
+        };
+
+        ws.onmessage = (e) => {
+          const data = JSON.parse(e.data);
+          rows[data.short_code] = data;
+          render();
+          logEl.textContent =
+            `${new Date().toLocaleTimeString()} — ${e.data}\n` +
+            logEl.textContent;
+        };
+
+        ws.onclose = () => {
+          statusEl.textContent = "disconnected — retrying…";
+          statusEl.className = "disconnected";
+          setTimeout(connect, 2000); // simple reconnect loop
+        };
+
+        ws.onerror = () => ws.close();
+      }
+
+      connect();
+    </script>
+  </body>
+</html>
