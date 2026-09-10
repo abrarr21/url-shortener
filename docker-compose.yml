@@ -27,5 +27,80 @@ services:
       timeout: 5s
       retries: 5
 
+  api-0:
+    build: ./server
+    ports: ["6969:8080"]
+    environment:
+      NODE_ID: 0
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on: [postgres, redis]
+
+  api-1:
+    build: ./server
+    ports: ["6968:8080"]
+    environment:
+      NODE_ID: 1
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on: [postgres, redis]
+
+  api-2:
+    build: ./server
+    ports: ["6967:8080"]
+    environment:
+      NODE_ID: 2
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on: [postgres, redis]
+
+  worker-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/worker"]
+    command: ["/bin/worker"]
+    environment:
+      WORKER_ID: worker1
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/worker"]
+    command: ["/bin/worker"]
+    environment:
+      WORKER_ID: worker2
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/worker"]
+    command: ["/bin/worker"]
+    environment:
+      WORKER_ID: worker3
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/url?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:
