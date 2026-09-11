@@ -21,16 +21,22 @@ type RedisConfig struct {
 	RedisUrl string
 }
 
+type RateLimitConfig struct {
+	Capacity   int
+	RefillRate float64
+}
+
 type NodeIDConfig struct {
 	NodeID   int64
 	WorkerID string
 }
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	NodeID   NodeIDConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	NodeID    NodeIDConfig
+	RateLimit RateLimitConfig
 }
 
 func Load() *Config {
@@ -57,6 +63,18 @@ func Load() *Config {
 		log.Println("WORKER_ID is missing, add to start the worker")
 	}
 
+	rateLimitCapacityStr := getEnv("RATELIMITCAPACITY", "100")
+	rateLimitCapacity, err := strconv.Atoi(rateLimitCapacityStr)
+	if err != nil {
+		log.Fatalf("Rate_Limit_Capacity must be a valid integer, got %s", rateLimitCapacityStr)
+	}
+
+	rateLimitRefillRateStr := getEnv("RATELIMITREFILLRATE", "2.5")
+	rateLimitRefillRate, err := strconv.ParseFloat(rateLimitRefillRateStr, 64)
+	if err != nil {
+		log.Fatalf("RATE_LIMIT_REFILL_RATE must be a valid float, got %s", rateLimitRefillRateStr)
+	}
+
 	return &Config{
 		ServerConfig{
 			Port: getEnv("PORT", "8080"),
@@ -74,6 +92,11 @@ func Load() *Config {
 		NodeIDConfig{
 			NodeID:   nodeID,
 			WorkerID: workerID,
+		},
+
+		RateLimitConfig{
+			Capacity:   rateLimitCapacity,
+			RefillRate: rateLimitRefillRate,
 		},
 	}
 }

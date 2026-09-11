@@ -15,6 +15,7 @@ import (
 	"github.com/abrarr21/url-shortener/internal/handler"
 	"github.com/abrarr21/url-shortener/internal/hub"
 	"github.com/abrarr21/url-shortener/internal/logger"
+	"github.com/abrarr21/url-shortener/internal/ratelimit"
 	"github.com/abrarr21/url-shortener/internal/routes"
 	"github.com/abrarr21/url-shortener/internal/shortener"
 )
@@ -63,8 +64,12 @@ func main() {
 
 	analyticsProducer := analytics.NewProducer(cacheConn.Client, logger)
 	svc := shortener.NewService(snowflake, queries, urlCache, logger)
+
+	limiter := ratelimit.NewLimiter(cacheConn.Client, cfg.RateLimit.Capacity, cfg.RateLimit.RefillRate)
+
 	h := handler.NewHandler(db, cacheConn, cfg, svc, analyticsProducer, logger, dashboardHub)
-	router := routes.RegisterAllRoutes(h, logger)
+
+	router := routes.RegisterAllRoutes(h, logger, limiter)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
