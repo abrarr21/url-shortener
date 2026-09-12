@@ -84,3 +84,19 @@ func validateURL(raw string) error {
 
 	return nil
 }
+
+func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+
+	stats, err := h.Service.GetStats(r.Context(), code)
+	if err != nil {
+		if errors.Is(err, shortener.ErrNotFound) {
+			utils.Error(w, http.StatusNotFound, "short code not found", utils.CodeNotFound, nil)
+			return
+		}
+		utils.Error(w, http.StatusInternalServerError, "failed to fetch stats", utils.CodeInternal, nil)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, stats)
+}

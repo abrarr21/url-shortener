@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
+	"github.com/abrarr21/url-shortener/internal/analytics"
 	"github.com/abrarr21/url-shortener/internal/cache"
 	"github.com/abrarr21/url-shortener/internal/database/generated"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +20,14 @@ type Service struct {
 	queries   generated.Querier
 	cache     *cache.URLCache
 	logger    *slog.Logger
+}
+
+type Stats struct {
+	ShortCode     string    `json:"short_code"`
+	LongUrl       string    `json:"long_url"`
+	ClickCount    int64     `json:"click_count"`
+	TrendingScore float64   `json:"trending_score"`
+	CreatedAT     time.Time `json:"created_at"`
 }
 
 func NewService(snowflake *SnowflakeGenerator, queries generated.Querier, urlCache *cache.URLCache, logger *slog.Logger) *Service {
@@ -82,4 +92,26 @@ func (s *Service) Lookup(ctx context.Context, shortcode string) (string, error) 
 	}
 
 	return url.LongUrl, nil
+}
+
+func (s *Service) GetStats(ctx context.Context, shortcode string) (Stats, error) {
+	url, err := s.queries.GetUrlByShortCode(ctx, shortcode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Stats{}, ErrNotFound
+		}
+
+		return Stats{}, err
+	}
+
+	age := time.Since(url.CreatedAt.Time)
+	score := analytics.DecayedScore(url.ClickCount, age)
+
+	return Stats{
+		ShortCode:     url.ShortCode,
+		LongUrl:       url.LongUrl,
+		ClickCount:    url.ClickCount,
+		TrendingScore: score,
+		CreatedAT:     url.CreatedAt.Time,
+	}, nil
 }

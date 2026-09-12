@@ -15,7 +15,6 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /bin/api /bin/api
 COPY --from=builder /bin/worker /bin/worker
-COPY --from=builder /app/web /app/web
 
 WORKDIR /app
 

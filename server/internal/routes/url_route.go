@@ -7,8 +7,7 @@ import (
 
 func URLRoutes(r chi.Router, h *handler.Handler) {
 	r.Post("/api/shorten", h.ShortenURL)
-	r.Get("/{shortcode}", h.RedirectURL)
+	r.Get("/api/{shortcode}", h.RedirectURL)
+	r.Get("/api/stats/{code}", h.GetStats)
 
-	r.Get("/dashboard", h.Dashboard)      // serves the static HTML page
-	r.Get("/ws/dashboard", h.DashboardWS) // the WebSocket endpoint
 }
