@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/abrarr21/url-shortener/internal/ratelimit"
 	"github.com/abrarr21/url-shortener/internal/utils"
@@ -40,7 +41,12 @@ func RateLimit(limiter *ratelimit.Limiter, logger *slog.Logger) func(http.Handle
 	}
 }
 
+// clientIP prefers X-Forwarded-For, set by nginx, since RemoteAddr would otherwise be nginx's own container IP for every request once traffic passes through the load balancer — collapsing all real clients into a single shared bucket.
 func clientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		parts := strings.Split(fwd, ",")
+		return strings.TrimSpace(parts[0])
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
