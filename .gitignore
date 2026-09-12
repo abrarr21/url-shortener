@@ -1,0 +1,79 @@
+# ==========================================
+# Environment / Secrets
+# ==========================================
+.env
+.env.local
+.env.production
+.env.development
+
+# ==========================================
+# Go
+# ==========================================
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build output
+bin/
+
+# Test binaries
+*.test
+
+# Coverage output
+*.out
+
+# Go workspace
+go.work
+
+# Vendor directory
+# vendor/
+
+
+# ==========================================
+# Node / Bun / React
+# ==========================================
+
+# Dependencies
+node_modules/
+bower_components/
+
+# Build output
+dist/
+
+# Logs
+*.log
+logs/
+
+# Backup files
+**/*.backup.*
+**/*.back.*
+
+
+# ==========================================
+# OS
+# ==========================================
+
+.DS_Store
+.DS_*
+Thumbs.db
+
+
+# ==========================================
+# Editors / IDEs
+# ==========================================
+
+*.sublime*
+.idea/
+.vscode/
+
+
+# ==========================================
+# Design files
+# ==========================================
+
+*.psd
+*.sketch
