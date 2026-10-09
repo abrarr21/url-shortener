@@ -5,7 +5,6 @@ import { extractCode, getStats, type StatsResponse } from "../lib/api";
 import { formatRelativeTime } from "../lib/format";
 import { NotchTabs } from "../components/NotchTabs";
 import { TelemetryGrid } from "../components/TelemetryGrid";
-import { SparklineSection } from "../components/SparklineSection";
 
 export function AnalyticsPage() {
   const navigate = useNavigate();
@@ -16,24 +15,18 @@ export function AnalyticsPage() {
   const [loading, setLoading] = useState(Boolean(searchParams.get("code")));
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  async function lookup(code: string, isBackground = false) {
-    if (!isBackground) {
-      setError("");
-      setLoading(true);
-    }
+  async function lookup(code: string) {
+    setError("");
+    setLoading(true);
     try {
       const data = await getStats(extractCode(code));
       setStats(data);
     } catch (err) {
-      if (!isBackground) {
-        setError(
-          err instanceof Error ? err.message : "Could not load link analytics.",
-        );
-      }
+      setError(
+        err instanceof Error ? err.message : "Could not load link analytics.",
+      );
     } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }
 
@@ -68,25 +61,51 @@ export function AnalyticsPage() {
     };
   }, [searchParams]);
 
-  // Real-time automatic polling: every 2 seconds when an active code is loaded
+  // Real-time WebSocket connection
   useEffect(() => {
-    const activeCode = stats?.short_code;
-    if (!activeCode) return;
+    if (!stats?.short_code) return;
 
-    const interval = setInterval(() => {
-      lookup(activeCode, true);
-    }, 2000);
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const ws = new WebSocket(wsUrl);
 
-    return () => clearInterval(interval);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.short_code === stats.short_code) {
+          setStats((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  click_count: data.click_count,
+                  trending_score: data.score,
+                }
+              : null,
+          );
+        }
+      } catch (err) {
+        console.error("WS parse error", err);
+      }
+    };
+
+    return () => ws.close();
   }, [stats?.short_code]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
     if (input.trim()) {
       const cleaned = extractCode(input);
+      setStats(null);
       setSearchParams({ code: cleaned });
       lookup(cleaned);
     }
+  }
+
+  function handlePresetClick(code: string) {
+    setInput(code);
+    setSearchParams({ code });
+    lookup(code);
   }
 
   function handleCopyTarget() {
@@ -96,33 +115,15 @@ export function AnalyticsPage() {
     setTimeout(() => setCopiedUrl(false), 2000);
   }
 
+  const isDev = window.location.port === "5173";
+  const baseOrigin = isDev
+    ? `${window.location.protocol}//${window.location.hostname}`
+    : window.location.origin;
+
   return (
     <div className="w-full">
-      {/* Analytics Hero Intro */}{" "}
-      <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-12">
-        {" "}
-        <div className="mb-5 inline-flex items-center gap-2.5 rounded-full border border-[#262C3A] bg-[#141720]/80 px-4 py-1.5 text-xs font-medium text-[#EAD6B8] shadow-inner backdrop-blur-md">
-          {" "}
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#10E599] shadow-[0_0_8px_#10E599]" />{" "}
-          <span className="font-mono text-[11px] tracking-wide text-[#C8CDD6]">
-            {" "}
-            DISTRIBUTED SYSTEMS · REAL-TIME TELEMETRY{" "}
-          </span>{" "}
-        </div>{" "}
-        <h1 className="font-display text-4xl font-bold tracking-tight text-white leading-[1.12] sm:text-5xl lg:text-6xl">
-          {" "}
-          Every click tells a{" "}
-          <span className="gold-gradient-text">story</span>{" "}
-        </h1>{" "}
-        <p className="mx-auto mt-4 max-w-2xl text-base font-normal leading-relaxed text-[#8F97A6] sm:text-lg">
-          {" "}
-          Track link performance, monitor click activity, and explore real-time
-          analytics powered by asynchronous event processing.{" "}
-        </p>{" "}
-      </div>
-      {/* Outer Container: Obsidian Noir with hairline border & velvet slate card */}
+      {/* Outer Container */}
       <div className="relative rounded-3xl border border-[#262C3A] bg-[#0E1117] p-3 shadow-[0_32px_80px_rgba(0,0,0,0.85)] sm:p-7 lg:p-10">
-        {/* Top Notch Tabs Header */}
         <NotchTabs
           activeTab="analytics"
           onTabChange={(tab) => {
@@ -130,7 +131,7 @@ export function AnalyticsPage() {
           }}
         />
 
-        {/* Tab 2 Content: Analytics & Telemetry */}
+        {/* Analytics Card */}
         <div className="rounded-2xl border border-[#262C3A] bg-[#141720] p-6 text-white shadow-2xl sm:rounded-3xl sm:p-10">
           <div className="mx-auto max-w-4xl">
             {/* Header info */}
@@ -146,8 +147,8 @@ export function AnalyticsPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-normal text-[#8F97A6]">
-                  Query real-time traverse metrics, click counts, and velocity
-                  indicators.
+                  Inspect live click counts, velocity score, and destination URL
+                  in real time.
                 </p>
               </div>
             </div>
@@ -158,19 +159,22 @@ export function AnalyticsPage() {
                 htmlFor="analyticsQuery"
                 className="mb-2 block font-mono text-xs font-bold uppercase tracking-wider text-[#8F97A6]"
               >
-                Enter Short Link or Hash Code
+                Enter Short Link or Code
               </label>
 
               <div className="flex flex-col items-stretch gap-3 sm:flex-row">
-                <div className="flex-1">
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 font-mono text-sm font-semibold text-[#F0B849]">
+                    /
+                  </span>
                   <input
                     id="analyticsQuery"
                     type="text"
                     required
-                    placeholder="Enter short code or full short URL"
+                    placeholder="e.g. R6fPov0RlY or full short URL"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="w-full rounded-xl border border-[#262C3A] bg-[#0E1117] px-4 py-3.5 font-mono text-base font-semibold text-white shadow-inner focus:border-[#E5A93C] focus:outline-none focus:ring-2 focus:ring-[#E5A93C]/20 transition-all"
+                    className="w-full rounded-xl border border-[#262C3A] bg-[#0E1117] py-3.5 pl-10 pr-4 font-mono text-base font-semibold text-white shadow-inner focus:border-[#E5A93C] focus:outline-none focus:ring-2 focus:ring-[#E5A93C]/20 transition-all"
                   />
                 </div>
 
@@ -180,7 +184,7 @@ export function AnalyticsPage() {
                   className="gold-glow-btn flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#F0B849] via-[#E5A93C] to-[#C9912A] px-7 py-3.5 font-display font-bold text-[#0B0D11] shadow-md transition-all hover:from-[#FFC55A] hover:to-[#F0B849] active:scale-95 disabled:opacity-60 whitespace-nowrap"
                 >
                   <Search className="h-4 w-4 text-[#0B0D11]" />
-                  <span>{loading ? "Fetching…" : "Fetch Telemetry"}</span>
+                  <span>{loading ? "Fetching…" : "View Analytics"}</span>
                 </button>
               </div>
             </form>
@@ -200,10 +204,10 @@ export function AnalyticsPage() {
                   <div>
                     <div className="flex items-center gap-2.5">
                       <span className="font-mono text-xl font-bold text-white sm:text-2xl">
-                        {window.location.origin}/api/{stats.short_code}
+                        {baseOrigin}/{stats.short_code}
                       </span>
                       <span className="rounded border border-[#E5A93C]/30 bg-[#E5A93C]/10 px-2 py-0.5 font-mono text-[11px] font-bold text-[#F0B849]">
-                        HTTP 301
+                        HTTP 302
                       </span>
                     </div>
 
@@ -245,17 +249,13 @@ export function AnalyticsPage() {
                       Created Timestamp
                     </div>
                     <div className="mt-0.5 font-mono text-xs font-semibold text-[#E2E2E8] sm:text-sm">
-                      {formatRelativeTime(stats.created_at)} ·{" "}
-                      {new Date(stats.created_at).toLocaleTimeString()}
+                      {formatRelativeTime(stats.created_at)}
                     </div>
                   </div>
                 </div>
 
-                {/* 4-Col Telemetry Metrics Grid */}
+                {/* 4 Clean Metric Cards (Total Clicks, Trending Score, Avg Clicks/hr, Link Age) */}
                 <TelemetryGrid stats={stats} />
-
-                {/* Sparkline & Ingress Sources */}
-                <SparklineSection />
               </div>
             )}
           </div>

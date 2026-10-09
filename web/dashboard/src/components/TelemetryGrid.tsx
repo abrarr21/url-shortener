@@ -5,76 +5,73 @@ interface TelemetryGridProps {
 }
 
 export function TelemetryGrid({ stats }: TelemetryGridProps) {
-  // Estimated ingress rate for telemetry feel
-  const velocity =
-    stats.click_count > 0 ? (stats.click_count / 14).toFixed(1) : "0.0";
+  const ageInHours = Math.max(
+    (Date.now() - new Date(stats.created_at).getTime()) / 3_600_000,
+    0,
+  );
+
+  const averageClicksPerHour =
+    ageInHours > 0 ? stats.click_count / ageInHours : 0;
+
+  const metrics = [
+    {
+      label: "Total Clicks",
+      value: stats.click_count.toLocaleString(),
+      description: "All-time recorded redirects",
+      valueClass: "text-white",
+    },
+    {
+      label: "Trending Score",
+      value: stats.trending_score.toFixed(3),
+      description: "Time-decayed popularity score",
+      valueClass: "text-[#F0B849]",
+    },
+    {
+      label: "Average Clicks / Hour",
+      value: averageClicksPerHour.toLocaleString("en-US", {
+        maximumFractionDigits: 1,
+      }),
+      description: "Lifetime average since creation",
+      valueClass: "text-white",
+    },
+    {
+      label: "Link Age",
+      value:
+        ageInHours < 1
+          ? `${Math.floor(ageInHours * 60)}m`
+          : ageInHours < 24
+            ? `${Math.floor(ageInHours)}h`
+            : `${Math.floor(ageInHours / 24)}d`,
+      description: new Date(stats.created_at).toLocaleString(),
+      valueClass: "text-white",
+    },
+  ];
 
   return (
     <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-      {/* Total Clicks */}
-      <div className="rounded-xl border border-[#262C3A] bg-[#141720] p-4 shadow-sm">
-        <div className="mb-1 flex items-center justify-between text-xs font-medium text-[#8F97A6]">
-          <span>Total Clicks</span>
-          <span className="rounded border border-[#10E599]/20 bg-[#10E599]/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#10E599]">
-            +12.4%
-          </span>
-        </div>
-        <div className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {stats.click_count.toLocaleString()}
-        </div>
-        <div className="mt-1 font-mono text-[11px] text-[#8F97A6]">
-          All-time recorded
-        </div>
-      </div>
+      {metrics.map((metric) => (
+        <div
+          key={metric.label}
+          className="min-w-0 rounded-xl border border-[#262C3A] bg-[#141720] p-4 shadow-sm"
+        >
+          <div className="mb-2 text-xs font-medium text-[#8F97A6]">
+            {metric.label}
+          </div>
 
-      {/* Trending Score */}
-      <div className="rounded-xl border border-[#262C3A] bg-[#141720] p-4 shadow-sm">
-        <div className="mb-1 flex items-center justify-between text-xs font-medium text-[#8F97A6]">
-          <span>Trending Score</span>
-          <span className="rounded border border-[#E5A93C]/30 bg-[#E5A93C]/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#F0B849]">
-            HOT 🔥
-          </span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="font-display text-2xl font-bold tracking-tight text-[#F0B849] sm:text-3xl">
-            {stats.trending_score.toFixed(1)}
-          </span>
-          <span className="text-xs font-bold text-[#8F97A6]">/ 100</span>
-        </div>
-        <div className="mt-1 font-mono text-[11px] text-[#8F97A6]">
-          Top velocity index
-        </div>
-      </div>
+          <div
+            className={`break-words font-display text-2xl font-bold tracking-tight sm:text-3xl ${metric.valueClass}`}
+          >
+            {metric.value}
+          </div>
 
-      {/* Live Velocity */}
-      <div className="rounded-xl border border-[#262C3A] bg-[#141720] p-4 shadow-sm">
-        <div className="mb-1 flex items-center justify-between text-xs font-medium text-[#8F97A6]">
-          <span>Live Velocity</span>
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#10E599] shadow-[0_0_8px_#10E599]" />
+          <div
+            className="mt-2 break-words font-mono text-[10px] leading-relaxed text-[#8F97A6]"
+            title={metric.description}
+          >
+            {metric.description}
+          </div>
         </div>
-        <div className="font-mono text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {velocity}
-        </div>
-        <div className="mt-1 font-mono text-[11px] text-[#8F97A6]">
-          req/s global ingress
-        </div>
-      </div>
-
-      {/* Edge Cache Hit */}
-      <div className="rounded-xl border border-[#262C3A] bg-[#141720] p-4 shadow-sm">
-        <div className="mb-1 flex items-center justify-between text-xs font-medium text-[#8F97A6]">
-          <span>Edge Cache Hit</span>
-          <span className="rounded border border-[#262C3A] bg-[#181C26] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#EAD6B8]">
-            P95 1.8ms
-          </span>
-        </div>
-        <div className="font-mono text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          99.8%
-        </div>
-        <div className="mt-1 font-mono text-[11px] text-[#8F97A6]">
-          Zero cold-start
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

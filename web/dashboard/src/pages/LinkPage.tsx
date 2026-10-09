@@ -21,10 +21,13 @@ export function LinkPage() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Constructs functional redirect URL: /api/{short_code} hits the backend redirect route
-  const shortLink = result
-    ? `${window.location.origin}/${result.short_code}`
-    : "";
+  // Constructs functional redirect URL: /{short_code} hits the backend redirect route
+  const isDev = window.location.port === "5173";
+  const baseOrigin = isDev
+    ? `${window.location.protocol}//${window.location.hostname}`
+    : window.location.origin;
+
+  const shortLink = result ? `${baseOrigin}/${result.short_code}` : "";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
