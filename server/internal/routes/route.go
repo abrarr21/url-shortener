@@ -20,6 +20,9 @@ func RegisterAllRoutes(h *handler.Handler, logger *slog.Logger, limiter *ratelim
 
 	r.Get("/health", h.CheckHealth)
 
+	// Register the websocket endpoint on the chi router
+	r.Get("/ws", h.DashboardWS)
+
 	URLRoutes(r, h)
 
 	return r
