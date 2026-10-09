@@ -29,7 +29,7 @@ function App() {
 
       <Header onNewLinkClick={() => navigate("/")} />
 
-      <main className="relative z-10 mx-auto flex-1 w-full max-w-6xl px-4 py-12 sm:px-8 lg:px-16">
+      <main className="relative pt-30 z-10 mx-auto flex-1 w-full max-w-6xl px-4 py-12 sm:px-8 lg:px-16">
         {/* Both pages stay mounted in the DOM. Switching tabs simply toggles visibility */}
         <div className={isAnalytics ? "hidden" : "block"}>
           <LinkPage />
