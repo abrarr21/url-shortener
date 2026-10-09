@@ -20,10 +20,10 @@ export function Header({ onNewLinkClick }: HeaderProps) {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 w-full border-b border-[#262C3A]/80 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 w-full transition-all duration-300 ${
         isScrolled
-          ? "bg-[#0B0D11]/60 shadow-lg shadow-black/20 backdrop-blur-xl"
-          : "bg-[#0B0D11] shadow-none backdrop-blur-none"
+          ? "border-b border-[#262C3A]/40 bg-[#0B0D11]/75 shadow-lg shadow-black/30 backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent shadow-none"
       }`}
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-12">

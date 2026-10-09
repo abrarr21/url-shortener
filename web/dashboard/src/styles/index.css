@@ -64,3 +64,22 @@ html {
 body {
   -ms-overflow-style: none;
 }
+
+/* dotted bg pattern */
+.dot-pattern {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.12) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  mask-image: radial-gradient(
+    ellipse 80% 50% at 50% 20%,
+    #000 20%,
+    transparent 85%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 50% at 50% 20%,
+    #000 20%,
+    transparent 85%
+  );
+}
