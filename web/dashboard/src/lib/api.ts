@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = "";
 
 export interface ShortenResponse {
   short_code: string;

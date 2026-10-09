@@ -23,7 +23,7 @@ export function LinkPage() {
 
   // Constructs functional redirect URL: /api/{short_code} hits the backend redirect route
   const shortLink = result
-    ? `${window.location.origin}/api/${result.short_code}`
+    ? `${window.location.origin}/${result.short_code}`
     : "";
 
   async function handleSubmit(e: FormEvent) {
@@ -58,7 +58,7 @@ export function LinkPage() {
             DISTRIBUTED SYSTEMS · ASYNC ANALYTICS
           </span>
         </div>
-        <h1 className="font-display text-4xl font-bold tracking-tight text-white leading-[1.12] sm:text-5xl lg:text-6xl">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-white leading-[1.0] sm:text-5xl lg:text-6xl">
           Build stronger connections with{" "}
           <span className="gold-gradient-text">every click</span>
         </h1>

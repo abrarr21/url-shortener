@@ -6,8 +6,7 @@ import (
 )
 
 func URLRoutes(r chi.Router, h *handler.Handler) {
-	r.Post("/api/shorten", h.ShortenURL)
-	r.Get("/api/{shortcode}", h.RedirectURL)
-	r.Get("/api/stats/{code}", h.GetStats)
-
+	r.Post("/shorten", h.ShortenURL)
+	r.Get("/stats/{code}", h.GetStats)
+	r.Get("/{shortcode}", h.RedirectURL)
 }
