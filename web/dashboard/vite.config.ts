@@ -9,7 +9,23 @@ export default defineConfig({
     proxy: {
       "/shorten": "http://localhost:80",
       "/stats": "http://localhost:80",
-      "/ws": { target: "ws://localhost:80", ws: true },
+      "/ws": {
+        target: "http://localhost:80",
+        ws: true,
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("error", (err) => {
+            // Ignore normal client-side socket disconnects
+            if (
+              err.message.includes("EPIPE") ||
+              err.message.includes("ECONNRESET")
+            ) {
+              return;
+            }
+            console.error("[vite ws proxy error]", err);
+          });
+        },
+      },
     },
   },
 });

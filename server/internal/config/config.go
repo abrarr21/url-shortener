@@ -4,13 +4,15 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type ServerConfig struct {
-	Port string
-	Env  string
+	Port         string
+	Env          string
+	AllowOrigins []string
 }
 
 type DatabaseConfig struct {
@@ -41,6 +43,15 @@ type Config struct {
 
 func Load() *Config {
 	_ = godotenv.Load()
+
+	originsRaw := os.Getenv("ALLOWED_ORIGINS")
+	var allowedOrigins []string
+	if originsRaw != "" {
+		allowedOrigins = strings.Split(originsRaw, ",")
+	} else {
+		// Fallback default for local development
+		allowedOrigins = []string{"http://localhost:5173"}
+	}
 
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
@@ -77,8 +88,9 @@ func Load() *Config {
 
 	return &Config{
 		ServerConfig{
-			Port: getEnv("PORT", "8080"),
-			Env:  getEnv("ENV", "development"),
+			Port:         getEnv("PORT", "8080"),
+			Env:          getEnv("ENV", "development"),
+			AllowOrigins: allowedOrigins,
 		},
 
 		DatabaseConfig{
