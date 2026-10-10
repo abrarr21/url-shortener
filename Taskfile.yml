@@ -66,3 +66,11 @@ tasks:
    desc: Show Docker service logs
    cmds:
     - docker compose logs -f
+
+  # -------------------------
+  # Performance & Load Testing
+  # -------------------------
+  test:load:
+    desc: Run k6 load test benchmark against the full stack
+    cmds:
+      - k6 run test/k6_test.js
