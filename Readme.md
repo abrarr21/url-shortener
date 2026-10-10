@@ -19,25 +19,26 @@ Quorum answers those by actually being distributed: 4 stateless API instances be
 
 ## Tech stack
 
-| Layer          | Choice                                                      | Why                                                                       |
-| -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Backend        | Go, [chi](https://github.com/go-chi/chi)                    | Idiomatic middleware chaining, stdlib-compatible                          |
-| Database       | PostgreSQL + [sqlc](https://sqlc.dev)                       | Type-safe generated queries, no ORM magic                                 |
-| Cache / queue  | Redis (cache-aside, Streams, ZSET, rate limiting)           | One tool, four jobs: cache, async queue, leaderboard, and atomic counters |
-| Load balancing | nginx                                                       | Explicit, inspectable config over a managed black box                     |
-| Real-time      | Native WebSockets, Hub/Client goroutine pattern             | No external pub-sub needed at this scale                                  |
-| Frontend       | React, TypeScript, Vite, Tailwind CSS v4, Bun               | Fast dev loop, modern CSS-first theming                                   |
-| Migrations     | [golang-migrate](https://github.com/golang-migrate/migrate) | Versioned, reversible schema changes                                      |
-| CI             | GitHub Actions                                              | Tests + build on every push, Postgres/Redis spun up as services           |
+| Layer          | Choice                                                      | Why                                                                                      |
+| -------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Backend        | Go, [chi](https://github.com/go-chi/chi)                    | Idiomatic middleware chaining, stdlib-compatible                                         |
+| Database       | PostgreSQL + [sqlc](https://sqlc.dev)                       | Type-safe generated queries, no ORM magic                                                |
+| Cache / queue  | Redis (cache-aside, Streams, Pub/Sub, ZSET, rate limiting)  | One tool, five jobs: cache, async queue, leaderboard, atomic counters, and Pub/Sub relay |
+| Load balancing | nginx                                                       | Explicit, inspectable config over a managed black box                                    |
+| Real-time      | Native WebSockets + Redis Pub/Sub relay                     | Redis Pub/Sub bridges updates across worker and API processes to local WebSocket hubs    |
+| Frontend       | React, TypeScript, Vite, Tailwind CSS v4, Bun               | Fast dev loop, modern CSS-first theming                                                  |
+| Migrations     | [golang-migrate](https://github.com/golang-migrate/migrate) | Versioned, reversible schema changes                                                     |
+| CI             | GitHub Actions                                              | Tests + build on every push, Postgres/Redis spun up as services                          |
 
 ## API
 
-| Method | Endpoint            | Description                                                              |
-| ------ | ------------------- | ------------------------------------------------------------------------ |
-| `POST` | `/api/shorten`      | Create a short code for a long URL                                       |
-| `GET`  | `/{code}`           | Redirect to the original URL (cache-aside: Redis, then Postgres on miss) |
-| `GET`  | `/api/stats/{code}` | Current click count, trending score, and metadata for a short link       |
-| `GET`  | `/health`           | Reports Postgres and Redis connectivity                                  |
+| Method | Endpoint        | Description                                                              |
+| ------ | --------------- | ------------------------------------------------------------------------ |
+| `POST` | `/shorten`      | Create a short code for a long URL                                       |
+| `GET`  | `/{code}`       | Redirect to the original URL (cache-aside: Redis, then Postgres on miss) |
+| `GET`  | `/stats/{code}` | Current click count, trending score, and metadata for a short link       |
+| `GET`  | `/health`       | Reports Postgres and Redis connectivity                                  |
+| `GET`  | `/ws`           | Upgrade to WebSocket connection for live dashboard telemetry             |
 
 ## Concurrency & performance
 
@@ -49,13 +50,31 @@ Load tested with [k6](https://k6.io) against the full stack: nginx, 4 API instan
 - **3 concurrent analytics workers** consuming from a Redis Streams consumer group, with automatic crash recovery via `XAUTOCLAIM` (a worker that dies mid-processing has its unacknowledged events picked up by another worker, not lost)
 - Rate limiting enforced via an **atomic Redis Lua script**, correct under concurrent requests hitting different API instances simultaneously, with zero race condition between the check and the token spend
 
+### Running the benchmarks
+
+You can reproduce these benchmarks against the local stack with the included k6 test script:
+
+```bash
+# run the benchmark suite (defaults: 120 req/s sustained for 30s)
+task test:load
+
+# or directly with k6
+k6 run test/k6_test.js
+
+# customize target throughput and duration
+TARGET_RPS=200 DURATION=60s k6 run test/k6_test.js
+```
+
 ## Local setup
 
-**Requirements:** Docker, [Task](https://taskfile.dev), [Bun](https://bun.sh)
+**Requirements:** Docker, [Go](https://go.dev), [Task](https://taskfile.dev), [Bun](https://bun.sh)
 
 ```bash
 # clone and enter the project
 git clone <repo-url> && cd url-shortener
+
+# copy environment variables for local tooling/migrations
+cp server/.env.example server/.env
 
 # start Postgres, Redis, nginx, 4 API instances, and 3 analytics workers
 docker compose up -d --build
@@ -75,12 +94,12 @@ bun install
 bun run dev
 ```
 
-Open the printed local URL. The dev server proxies `/api` and `/ws` to nginx on port 80.
+Open the printed local URL. The dev server proxies `/shorten`, `/stats`, and `/ws` to nginx on port 80.
 
 **Try it:**
 
 ```bash
-curl -X POST localhost/api/shorten \
+curl -X POST localhost/shorten \
   -H "Content-Type: application/json" \
   -d '{"long_url":"https://example.com"}'
 ```
@@ -92,17 +111,25 @@ url-shortener/
 ├── docker-compose.yml
 ├── nginx.conf
 ├── Taskfile.yml
+├── docs/                           # architecture diagrams & design assets
 ├── server/
 │   ├── cmd/{api,worker,migrate}/   # three independently deployable binaries
 │   ├── internal/
-│   │   ├── shortener/              # Snowflake ID generation, base62, core service
-│   │   ├── cache/                  # Redis cache-aside
 │   │   ├── analytics/              # stream producer/consumer, trending score
-│   │   ├── hub/                    # WebSocket Hub/Client pattern
+│   │   ├── cache/                  # Redis cache-aside
+│   │   ├── config/                 # environment & application configuration
+│   │   ├── database/               # PostgreSQL connection pool & sqlc queries
+│   │   ├── handler/                # HTTP & WebSocket route handlers
+│   │   ├── hub/                    # WebSocket Hub/Client pattern & Redis Pub/Sub bridge
+│   │   ├── logger/                 # structured logging setup (slog)
+│   │   ├── middleware/             # rate limiting, request ID, structured logging
 │   │   ├── ratelimit/              # atomic token bucket (Lua script)
-│   │   └── middleware/
+│   │   ├── routes/                 # Chi router and route registration
+│   │   ├── shortener/              # Snowflake ID generation, base62, core service
+│   │   └── utils/                  # JSON response & error formatting helpers
 │   ├── migrations/                 # versioned, up/down pairs
 │   └── queries/                    # sqlc source queries
+├── test/                           # k6 load testing & benchmark scripts
 └── web/dashboard/                  # React + TS + Tailwind frontend
 ```
 
